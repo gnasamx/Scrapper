@@ -1,10 +1,13 @@
 const puppeteer = require("puppeteer");
+const fs = require("fs");
 const jsonfile = require("jsonfile");
 var nodemailer = require("nodemailer");
+const json2html = require("node-json2html");
 require("dotenv").config();
 
 const todayFilepath = "./today.json";
 const yesterdayFilepath = "./yesterday.json";
+const templateFilepath = "./template.html";
 let itemTargetCount = 0;
 
 (async () => {
@@ -36,42 +39,54 @@ let itemTargetCount = 0;
     const priceDown = [];
 
     for (let i = 0; i < itemTargetCount; i++) {
-      if (todayFile[i].price < yesterdayFile[i].price) {
+      if (todayFile[i].price > yesterdayFile[i].price) {
         priceDown.push(todayFile[i]);
       }
     }
     console.log("price down: ", priceDown);
 
+    let html = json2html.transform(priceDown, transform);
+    fs.writeFile(templateFilepath, html, err => {
+      if (err) throw new Error("Error while saving html template: ", err);
+      console.log("Template saved successfully");
+    });
+
     if (priceDown.length > 0) {
-      var transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: process.env.GMAIL,
-          pass: process.env.GMAIL_PWD
-        }
-      });
-
-      var mailOptions = {
-        from: process.env.GMAIL,
-        to: process.env.GMAIL,
-        subject: "Myntra | Price dropped alert",
-        text: JSON.stringify(priceDown)
-      };
-
-      transporter.sendMail(mailOptions, function(error, info) {
-        if (error) {
-          console.log("Error while sending email: ", error);
-        } else {
-          console.log("Email sent: " + info.response);
-        }
-      });
+      // sendEmail(priceDown);
     }
+
+    let transform = getHtmlTemplate();
 
     browser.close();
     console.log("Good bye");
   } catch (err) {
     console.log("Something went wrong", err);
     process.exit();
+  }
+
+  function sendEmail(data) {
+    var transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.GMAIL,
+        pass: process.env.GMAIL_PWD
+      }
+    });
+
+    var mailOptions = {
+      from: process.env.GMAIL,
+      to: process.env.GMAIL,
+      subject: "Myntra | Price dropped alert",
+      text: JSON.stringify(data)
+    };
+
+    transporter.sendMail(mailOptions, function(error, info) {
+      if (error) {
+        console.log("Error while sending email: ", error);
+      } else {
+        console.log("Email sent: " + info.response);
+      }
+    });
   }
 
   async function scrapeInfiniteScrollItems(
@@ -102,23 +117,64 @@ let itemTargetCount = 0;
 
   function extractItems() {
     const collectItems = [];
+
     const itemCount = document.querySelectorAll(".itemcard-itemCard").length;
+
     const itemNames = document.querySelectorAll(
       ".itemdetails-itemDetailsLabel"
     );
     const itemPrices = document.querySelectorAll(".itemdetails-boldFont");
     const itemActions = document.querySelectorAll(".itemcard-itemActions");
+    const itemImages = document.querySelectorAll(".itemcard-itemImage");
+    const itemLinks = document.querySelectorAll(".itemcard-itemImageDiv");
 
     for (let i = 0; i < itemCount; i++) {
       collectItems.push({
+        link: itemLinks[i].firstChild.getAttribute("href"),
+        image: itemImages[i].src,
         name: itemNames[i].innerText,
         price: itemPrices[i].innerText.replace(/\D/g, ""),
         inStock: itemActions[i].childElementCount === 2 ? true : false
       });
     }
-
-    console.log("collectedItems: ", collectItems);
-
     return collectItems;
+  }
+
+  function getHtmlTemplate() {
+    return {
+      "<>": "table",
+      html: [
+        {
+          "<>": "tbody",
+          html: [
+            {
+              "<>": "tr",
+              html: [
+                {
+                  "<>": "td",
+                  html: [{ style: "Width:80px", "<>": "img", src: "${image}" }]
+                },
+                {
+                  "<>": "td",
+                  html: [
+                    {
+                      style:
+                        "padding-left:20px;color:#94989f;line-height:1.7;font-size:12px"
+                    },
+                    {
+                      "<>": "span",
+                      text: "${name}",
+                      style: "color:#29303f;font-size:14px"
+                    },
+                    { "<>": "br" },
+                    { "<>": "span", text: "Rs. ${price}" }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    };
   }
 })();
