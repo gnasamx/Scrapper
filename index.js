@@ -46,6 +46,7 @@ let itemTargetCount = 0;
     }
 
     let transform = getHtmlTemplate();
+
     let html = json2html.transform(priceDown, transform);
     fs.writeFile(templateFilepath, html, err => {
       if (err) throw new Error("Error while saving html template: ", err);
@@ -89,6 +90,7 @@ let itemTargetCount = 0;
           console.log("Error while sending email: ", error);
         } else {
           console.log("Email sent: " + info.response);
+          clearFiles();
         }
       });
     });
@@ -181,5 +183,17 @@ let itemTargetCount = 0;
         }
       ]
     };
+  }
+
+  function clearFiles() {
+    // Delete previous yesterday.json
+    fs.unlink(yesterdayFilepath, err => {
+      if (err) throw new Error("Error occured while deleting today.json");
+    });
+    // Rename file
+    fs.rename(todayFilepath, yesterdayFilepath, err => {
+      if (err)
+        throw new Error("Error occured whlie renaming file yesterday.json");
+    });
   }
 })();
