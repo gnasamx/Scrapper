@@ -3,11 +3,12 @@ const fs = require("fs");
 const jsonfile = require("jsonfile");
 var nodemailer = require("nodemailer");
 const json2html = require("node-json2html");
+var ejs = require("ejs");
 require("dotenv").config();
 
 const todayFilepath = "./today.json";
 const yesterdayFilepath = "./yesterday.json";
-const templateFilepath = "./template.html";
+const templateFilepath = "./template.hbs";
 let itemTargetCount = 0;
 
 (async () => {
@@ -43,19 +44,16 @@ let itemTargetCount = 0;
         priceDown.push(todayFile[i]);
       }
     }
-    console.log("price down: ", priceDown);
 
+    let transform = getHtmlTemplate();
     let html = json2html.transform(priceDown, transform);
     fs.writeFile(templateFilepath, html, err => {
       if (err) throw new Error("Error while saving html template: ", err);
       console.log("Template saved successfully");
+      if (priceDown.length > 0) {
+        sendEmail();
+      }
     });
-
-    if (priceDown.length > 0) {
-      // sendEmail(priceDown);
-    }
-
-    let transform = getHtmlTemplate();
 
     browser.close();
     console.log("Good bye");
@@ -64,7 +62,7 @@ let itemTargetCount = 0;
     process.exit();
   }
 
-  function sendEmail(data) {
+  function sendEmail() {
     var transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -73,19 +71,26 @@ let itemTargetCount = 0;
       }
     });
 
-    var mailOptions = {
-      from: process.env.GMAIL,
-      to: process.env.GMAIL,
-      subject: "Myntra | Price dropped alert",
-      text: JSON.stringify(data)
-    };
+    ejs.renderFile(__dirname + "/template.hbs", (err, data) => {
+      if (err) throw new Error("Error while rendering html template: ", err);
 
-    transporter.sendMail(mailOptions, function(error, info) {
-      if (error) {
-        console.log("Error while sending email: ", error);
-      } else {
-        console.log("Email sent: " + info.response);
-      }
+      console.log("inside renderFile: ", data);
+
+      var mailOptions = {
+        from: process.env.GMAIL,
+        to: process.env.GMAIL,
+        subject: "Myntra | Price dropped alert",
+        text: "Checkout below products",
+        html: data
+      };
+
+      transporter.sendMail(mailOptions, function(error, info) {
+        if (error) {
+          console.log("Error while sending email: ", error);
+        } else {
+          console.log("Email sent: " + info.response);
+        }
+      });
     });
   }
 
