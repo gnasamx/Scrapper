@@ -32,7 +32,7 @@ async function main() {
   let itemTargetCount = 0;
 
   try {
-    const browser = await puppeteer.launch({ headless: true });
+    const browser = await puppeteer.launch({headless: true ,args: ['--no-sandbox', '--disable-setuid-sandbox']});
     const page = await browser.newPage();
     page.setViewport({ width: 1280, height: 926 });
 
