@@ -3,4 +3,3 @@ package-lock.json
 node_modules
 template.hbs
 today.json
-yesterday.json
