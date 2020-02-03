@@ -20,7 +20,7 @@ process.on('unhandledRejection', function(err) {
 
 app.listen(process.env.PORT, () => {
   console.log('App is running on port: ', process.env.PORT);
-  schedule.scheduleJob('* * * * *', function() {
+  schedule.scheduleJob('0 * * * *', function() {
     main();
   });
 })
@@ -59,7 +59,7 @@ async function main() {
     const priceDown = [];
 
     for (let i = 0; i < itemTargetCount; i++) {
-      if (todayFile[i].price > yesterdayFile[i].price) {
+      if (todayFile[i].price < yesterdayFile[i].price) {
         priceDown.push(todayFile[i]);
       }
     }
