@@ -34,7 +34,7 @@ async function main() {
   try {
     const browser = await puppeteer.launch({args: ['--no-sandbox', '--disable-setuid-sandbox']});
     const page = await browser.newPage();
-    page.setViewport({ width: 1280, height: 926 });
+    page.setViewport({ width: 1280, height: 930 });
 
     // Open wishlist page
     await page.goto("https://www.myntra.com/wishlist", { waitUntil: "load" });
