@@ -20,9 +20,9 @@ process.on('unhandledRejection', function(err) {
 
 app.listen(process.env.PORT, () => {
   console.log('App is running on port: ', process.env.PORT);
-  schedule.scheduleJob('0 * * * *', function() {
+  // schedule.scheduleJob('* * * * *', function() {
     main();
-  });
+  // });
 })
 
 async function main() {
@@ -59,26 +59,39 @@ async function main() {
     const priceDown = [];
 
     for (let i = 0; i < itemTargetCount; i++) {
-      if (todayFile[i].price < yesterdayFile[i].price) {
-        priceDown.push(todayFile[i]);
+      if(checkItemExists(todayFile[i].link, yesterdayFile)) {
+        yesterdayFile.filter((ele) => {
+          if(ele.link === todayFile[i].link) {
+            if(ele.price > todayFile[i].price) {
+              todayFile[i].yesterdayPriceWas = ele.price;
+              priceDown.push(todayFile[i]);
+            }
+          }
+        });
       }
     }
 
-    let transform = getHtmlTemplate();
-
-    let html = json2html.transform(priceDown, transform);
-    fs.writeFile(templateFilepath, html, err => {
-      if (err) throw new Error("Error while saving html template: ", err);
-      console.log("Template saved successfully");
-      if (priceDown.length > 0) {
-        sendEmail();
-      }
-    });
+    if(priceDown.length > 0) {
+      let transform = getHtmlTemplate();
+      let html = json2html.transform(priceDown, transform);
+      fs.writeFile(templateFilepath, html, err => {
+        if (err) throw new Error("Error while saving html template: ", err);
+        console.log("Template saved successfully");
+        if (priceDown.length > 0) {
+          sendEmail();
+        }
+      });
+    }
 
     browser.close();
     console.log("Good bye");
   } catch (err) {
     console.log("Something went wrong", err);
+  }
+
+  function checkItemExists(link, yesterdayFile) {
+    let result = yesterdayFile.some(item => item.link === link);
+    return result;
   }
 
   function sendEmail() {
@@ -184,15 +197,18 @@ async function main() {
                   html: [
                     {
                       style:
-                        "padding-left:20px;color:#94989f;line-height:1.7;font-size:12px"
+                        "padding-left:20px;color:#29303f;line-height:1.7;font-size:12px"
                     },
                     {
-                      "<>": "span",
+                      "<>": "a",
+                      href: "${link}",
                       text: "${name}",
-                      style: "color:#29303f;font-size:14px"
+                      style: "color:#000000;font-size:14px;font-weight:500;text-decoration:none"
                     },
                     { "<>": "br" },
-                    { "<>": "span", text: "Rs. ${price}" }
+                    { "<>": "span", text: "> Rs. ${price}" },
+                    { "<>": "br" },
+                    { "<>": "span", text: "< Rs. ${yesterdayPriceWas}" }
                   ]
                 }
               ]
